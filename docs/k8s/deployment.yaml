@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gree-ac-mcp-server
+  namespace: gree-ac
+  labels:
+    app.kubernetes.io/name: gree-ac-mcp-server
+spec:
+  # Keep this at 1. Each pod independently binds and polls the devices (duplicate
+  # UDP traffic) and holds MCP session state in memory (no shared session store),
+  # so scaling out is counter-productive here.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gree-ac-mcp-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gree-ac-mcp-server
+    spec:
+      # ── Networking caveat ──────────────────────────────────────────────────
+      # GREE devices are discovered/controlled over UDP on the LAN. Pods on a
+      # cluster overlay network normally CANNOT reach them. To make this work you
+      # typically need hostNetwork + pin the pod to a node that sits on the same
+      # L2 network as the ACs, and set explicit "address" values in config.json.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      # Pin to a node on the AC's LAN (label your node accordingly):
+      #   kubectl label node <node> gree-ac/lan=true
+      nodeSelector:
+        gree-ac/lan: "true"
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000          # the "node" user in the node:20-alpine image
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: gree-ac-mcp-server
+          image: gree-ac-mcp-server:latest   # build & push to your registry first
+          imagePullPolicy: IfNotPresent
+          # The image ENTRYPOINT is `node dist/index.js`; these args set the flags.
+          args:
+            - "--transport"
+            - "http"
+            - "--config"
+            - "/config/config.json"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8080"
+            - "--log-level"
+            - "info"
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+
+          livenessProbe:
+            httpGet:
+              path: /healthz          # unauthenticated by design
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: config
+          secret:
+            secretName: gree-ac-config
+            items:
+              - key: config.json
+                path: config.json
+        - name: tmp
+          emptyDir: {}

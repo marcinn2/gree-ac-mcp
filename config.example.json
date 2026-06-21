@@ -1,0 +1,52 @@
+{
+  "bearerToken": "replace-me-with-a-long-random-secret",
+  "udpPort": 7000,
+  "updateInterval": 1000,
+  "retryInterval": 5000,
+  "host": "0.0.0.0",
+  "port": 8080,
+  "corsOrigins": [],
+  "devices": [
+    {
+      "name": "Taras AC",
+      "room": "Taras",
+      "address": "192.168.1.50",
+      "mac": "502cc6aabbcc",
+      "model": "SH-12BIV",
+      "nameFan": "Taras Fan",
+      "serialNumber": "",
+      "minimumTargetTemperature": 16,
+      "maximumTargetTemperature": 30,
+      "oscillation": {
+        "on": { "horizontal": "full", "vertical": "full" },
+        "off": { "horizontal": "default", "vertical": "default" }
+      },
+      "xFan": true,
+      "lightControl": true,
+      "fakeSensor": true,
+      "sensorOffset": 0,
+      "speedSteps": 5,
+      "encryptionVersion": 0,
+      "updateInterval": 1000,
+      "retryInterval": 5000
+    },
+    {
+      "name": "Bedroom AC",
+      "room": "Bedroom",
+      "mac": "502cc6ddeeff",
+      "model": "SH-09BIV",
+      "minimumTargetTemperature": 16,
+      "maximumTargetTemperature": 30,
+      "oscillation": {
+        "on": { "horizontal": "default", "vertical": "full" },
+        "off": { "horizontal": "default", "vertical": "fixed-top" }
+      },
+      "xFan": false,
+      "lightControl": true,
+      "fakeSensor": false,
+      "sensorOffset": -1,
+      "speedSteps": 3,
+      "encryptionVersion": 0
+    }
+  ]
+}

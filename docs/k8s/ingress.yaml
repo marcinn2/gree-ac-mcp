@@ -1,0 +1,34 @@
+# Optional. Exposes the MCP server over HTTPS (recommended — the app itself only
+# speaks plaintext HTTP and relies on the bearer token). Example is for the
+# ingress-nginx controller; adjust annotations for your controller.
+#
+# SSE / Streamable HTTP need response buffering disabled and generous timeouts so
+# the event stream is not buffered or cut off.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gree-ac-mcp-server
+  namespace: gree-ac
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # cert-manager example (remove if you manage TLS another way):
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - gree-ac.example.com
+      secretName: gree-ac-tls
+  rules:
+    - host: gree-ac.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gree-ac-mcp-server
+                port:
+                  name: http

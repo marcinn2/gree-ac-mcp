@@ -1,0 +1,55 @@
+# Docker Compose example for gree-ac-mcp-server (HTTP mode).
+#
+# Usage:
+#   cd docs
+#   cp ../config.example.json ../config.json   # then edit it (bearerToken + devices)
+#   docker compose up -d --build
+#   curl http://localhost:8080/healthz
+#
+# The image entrypoint already runs: --transport http --config /config/config.json
+# (see ../Dockerfile). Override `command` below if you need different flags.
+
+services:
+  gree-ac-mcp:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: gree-ac-mcp-server:latest
+    container_name: gree-ac-mcp
+    restart: unless-stopped
+
+    # ── Networking ────────────────────────────────────────────────────────────
+    # GREE discovery uses UDP *broadcast* to 255.255.255.255:7000 and listens for
+    # replies on the LAN. That only works with host networking, so this is the
+    # recommended default. With host networking the app binds directly to the
+    # host's port (set via --port, default 8080) and the `ports:` block is ignored.
+    network_mode: host
+    #
+    # Alternative (bridge networking): only viable if you give EVERY device an
+    # explicit "address" in config.json (no broadcast discovery needed) AND unicast
+    # UDP/7000 can reach the units and replies can route back. Then remove
+    # `network_mode: host` and uncomment:
+    # ports:
+    #   - "8080:8080"
+
+    volumes:
+      # Reuses the repo-root config.json described in the main README quick-start.
+      - ../config.json:/config/config.json:ro
+
+    # Optionally override the default flags (host/port/log level):
+    # command: ["--transport", "http", "--config", "/config/config.json", "--host", "0.0.0.0", "--port", "8080", "--log-level", "info"]
+
+    healthcheck:
+      # /healthz is unauthenticated by design — ideal for container health checks.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      # Cap log retention — logs include device identifiers (mac / IP).
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

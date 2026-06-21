@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gree-ac
+
+resources:
+  - namespace.yaml
+  - secret.yaml      # replace the placeholder bearerToken before applying
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml     # optional; remove this line if you don't use an ingress
+
+# Pin the image to your registry/tag here instead of editing deployment.yaml:
+# images:
+#   - name: gree-ac-mcp-server
+#     newName: registry.example.com/gree-ac-mcp-server
+#     newTag: "1.0.0"
