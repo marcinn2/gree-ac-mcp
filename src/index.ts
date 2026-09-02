@@ -46,11 +46,25 @@ function parseCliOptions(): CliOptions {
     throw new Error(`Invalid --log-level "${logLevel}"`);
   }
 
+  // CLI overrides bypass the config schema, so validate them here to the same rules.
+  let port: number | undefined;
+  if (values.port !== undefined) {
+    port = Number(values.port);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error(`Invalid --port "${values.port}" (expected an integer 1-65535)`);
+    }
+  }
+
+  const host = values.host;
+  if (host !== undefined && host.trim() === '') {
+    throw new Error('Invalid --host (must not be empty)');
+  }
+
   return {
     transport,
     configPath: values.config ?? process.env.GREE_MCP_CONFIG,
-    host: values.host,
-    port: values.port !== undefined ? Number(values.port) : undefined,
+    host,
+    port,
     logLevel: logLevel as LogLevel,
   };
 }

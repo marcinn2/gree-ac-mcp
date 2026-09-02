@@ -12,7 +12,7 @@ function baseDevice(overrides: Record<string, unknown> = {}): Record<string, unk
 
 function baseConfig(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    bearerToken: 'secret',
+    bearerToken: '0123456789abcdef0123456789abcdef', // 32 chars
     devices: [baseDevice()],
     ...overrides,
   };
@@ -67,6 +67,30 @@ test('rejects a missing bearerToken', () => {
   const cfg = baseConfig();
   delete (cfg as Record<string, unknown>).bearerToken;
   assert.throws(() => parseConfig(cfg), ConfigError);
+});
+
+test('rejects a bearerToken shorter than 32 characters', () => {
+  assert.throws(() => parseConfig(baseConfig({ bearerToken: 'too-short' })), ConfigError);
+});
+
+test('accepts a 32-character bearerToken', () => {
+  const cfg = parseConfig(baseConfig({ bearerToken: 'a'.repeat(32) }));
+  assert.equal(cfg.bearerToken.length, 32);
+});
+
+test('rejects duplicate device names (case-insensitive)', () => {
+  assert.throws(
+    () =>
+      parseConfig(
+        baseConfig({
+          devices: [
+            baseDevice({ name: 'Living Room' }),
+            baseDevice({ mac: 'aabbccddeeff', name: 'living room' }),
+          ],
+        }),
+      ),
+    (err: unknown) => err instanceof ConfigError && /duplicate device name/.test((err as Error).message),
+  );
 });
 
 test('rejects an invalid MAC address', () => {

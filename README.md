@@ -18,7 +18,7 @@ and [tomikaa87/gree-remote](https://github.com/tomikaa87/gree-remote).
 
 ## Requirements
 
-- Node.js >= 20
+- Node.js >= 22
 - The AC units must be on the same LAN/subnet as the server (UDP broadcast/unicast to port 7000).
 
 ## Install & build
@@ -49,8 +49,8 @@ During development you can run the TypeScript directly with `npm run dev:stdio` 
 |------|---------|-------------|
 | `--transport <stdio\|http>` | `stdio` | Transport mode. |
 | `--config <path>` | `$GREE_MCP_CONFIG` | Path to the config file (required). |
-| `--host <host>` | `0.0.0.0` | HTTP bind host (http mode). Overrides config. |
-| `--port <port>` | `8080` | HTTP bind port (http mode). Overrides config. |
+| `--host <host>` | `0.0.0.0` | HTTP bind host (http mode). Overrides config. Must be non-empty. |
+| `--port <port>` | `8080` | HTTP bind port (http mode). Overrides config. Must be an integer 1–65535. |
 | `--log-level <debug\|info\|warn\|error>` | `info` | Log verbosity (JSON lines on **stderr**). |
 
 The config file path may also be supplied via the `GREE_MCP_CONFIG` environment variable.
@@ -67,14 +67,14 @@ changes** (hot-reload is not implemented).
 
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
-| `bearerToken` | string | — (required) | Token required on every HTTP/SSE request. Ignored in stdio mode. |
+| `bearerToken` | string | — (required) | Token required on every HTTP/SSE request. **Minimum 32 characters.** Ignored in stdio mode. |
 | `udpPort` | number | `7000` | UDP port the devices listen on. |
 | `updateInterval` | number (ms) | `1000` | Default status-poll interval. |
 | `retryInterval` | number (ms) | `5000` | Default retry/offline-detection interval. |
 | `host` | string | `0.0.0.0` | Default HTTP bind host (overridable by `--host`). |
 | `port` | number | `8080` | Default HTTP bind port (overridable by `--port`). |
 | `corsOrigins` | string[] | `[]` | Allowed CORS origins for HTTP mode. Empty disables CORS; `["*"]` allows any origin; otherwise an explicit allow-list. |
-| `devices` | array | — (required, ≥1) | One entry per AC. Duplicate `mac` values are rejected. |
+| `devices` | array | — (required, ≥1) | One entry per AC. Duplicate `mac` **and duplicate `name`** (case-insensitive) values are rejected. |
 
 ### Per-device fields
 
@@ -181,7 +181,7 @@ No bearer token is needed in stdio mode (the process pipe is the trust boundary)
 ## HTTP usage
 
 Bearer auth is **mandatory** on `/mcp`, `/sse` and `/messages`. Missing/invalid tokens get
-`401` with a `WWW-Authenticate: Bearer` header. `/healthz` is **unauthenticated**.
+`401` with a `WWW-Authenticate: Bearer` header. `/healthz` is **unauthenticated** and returns only anonymized device identifiers (vendor-prefix-only MAC, first-letter-only name).
 
 ### CORS (browser clients)
 
@@ -202,7 +202,8 @@ unaffected. When enabled:
 
 ```bash
 curl http://localhost:8080/healthz
-# {"status":"ok","total":2,"bound":1,"unbound":1,"devices":[...]}
+# {"status":"ok","total":2,"bound":1,"unbound":1,
+#  "devices":[{"mac":"502cc6******","name":"T***","bound":true}]}
 ```
 
 ### Modern Streamable HTTP
@@ -261,6 +262,18 @@ curl -X POST "http://localhost:8080/messages?sessionId=YOUR_SESSION_ID" \
 The image is multi-stage and runs as the non-root `node` user, defaulting to HTTP mode reading
 `/config/config.json`.
 
+Prebuilt multi-arch images (`linux/amd64` + `linux/arm64`) are published to GitHub Container
+Registry:
+
+```bash
+docker run --rm \
+  --network host \
+  -v "$(pwd)/config.json:/config/config.json:ro" \
+  ghcr.io/marcinn2/gree-ac-mcp:latest
+```
+
+Or build it yourself:
+
 ```bash
 docker build -t gree-ac-mcp-server .
 docker run --rm \
@@ -302,8 +315,10 @@ npm test
 ```
 
 Covers the protocol crypto (v1/v2 encrypt-decrypt round-trips and a known-answer vector, plus
-envelope pack/unpack) and config-schema validation (defaults, MAC normalization, interval
-inheritance, duplicate-MAC and bad-value rejection).
+envelope pack/unpack), config-schema validation (defaults, MAC normalization, interval
+inheritance, duplicate-MAC/duplicate-name, bad-value and short-`bearerToken` rejection), the
+bearer-auth middleware (accepts the correct token; rejects wrong, mismatched-length and malformed
+ones), and the CORS middleware (origin allow-listing, wildcard, and preflight handling).
 
 ## Project layout
 

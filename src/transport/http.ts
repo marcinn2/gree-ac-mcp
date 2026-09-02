@@ -28,7 +28,9 @@ export async function runHttp(config: ResolvedConfig, manager: DeviceManager, lo
     log.info('CORS enabled', { origins: config.corsOrigins });
   }
 
-  app.use(express.json());
+  // Bounded so unauthenticated requests cannot force parsing of large bodies (this
+  // runs before auth). Tool payloads here are tiny; 64kb is ample.
+  app.use(express.json({ limit: '64kb' }));
 
   const auth = bearerAuth(config.bearerToken, log);
 

@@ -6,6 +6,20 @@ import { GreeDevice } from './device.js';
 import type { ResolvedConfig } from './types.js';
 import type { Logger } from '../logger.js';
 
+/** Mask a MAC to its vendor prefix (shared GREE OUI), hiding the device-unique suffix. */
+function anonymizeMac(mac: string): string {
+  const visible = 6; // first 6 hex = vendor OUI, identical across all GREE units
+  if (mac.length <= visible) {
+    return '*'.repeat(mac.length);
+  }
+  return mac.slice(0, visible) + '*'.repeat(mac.length - visible);
+}
+
+/** Mask a device name to its first character. */
+function anonymizeName(name: string): string {
+  return name.length === 0 ? '*' : name[0] + '***';
+}
+
 export interface DeviceSelector {
   mac?: string;
   name?: string;
@@ -60,9 +74,20 @@ export class DeviceManager {
     return undefined;
   }
 
-  /** Connectivity summary for the /healthz endpoint. */
+  /**
+   * Connectivity summary for the unauthenticated /healthz endpoint.
+   *
+   * MACs and names are anonymized: the MAC keeps only its vendor prefix (the shared
+   * GREE OUI, not device-identifying) with the device-unique suffix masked, and the
+   * name keeps only its first character. This withholds the full MAC — the identifier
+   * an attacker would need to spoof the device on the LAN — from an unauthenticated caller.
+   */
   summary(): { total: number; bound: number; unbound: number; devices: Array<{ mac: string; name: string; bound: boolean }> } {
-    const devices = this.list().map((d) => ({ mac: d.mac, name: d.config.name, bound: d.bound }));
+    const devices = this.list().map((d) => ({
+      mac: anonymizeMac(d.mac),
+      name: anonymizeName(d.config.name),
+      bound: d.bound,
+    }));
     const bound = devices.filter((d) => d.bound).length;
     return {
       total: devices.length,

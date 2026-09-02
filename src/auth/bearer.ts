@@ -9,14 +9,18 @@ import crypto from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import type { Logger } from '../logger.js';
 
-/** Constant-time string comparison that is safe against length leaks. */
+/**
+ * Constant-time string comparison. Both inputs are first hashed to a fixed-length
+ * SHA-256 digest, so the comparison neither short-circuits on a length mismatch nor
+ * varies its timing with the secret's length. (A raw timingSafeEqual over the plain
+ * buffers would throw on unequal lengths, forcing an early length check that leaks
+ * the expected token's length.) The only timing dependent on input length is the
+ * hashing of the caller-supplied value, which reveals nothing about the secret.
+ */
 function safeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) {
-    return false;
-  }
-  return crypto.timingSafeEqual(bufA, bufB);
+  const digestA = crypto.createHash('sha256').update(a).digest();
+  const digestB = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(digestA, digestB);
 }
 
 export function bearerAuth(expectedToken: string, log: Logger) {

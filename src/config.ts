@@ -38,7 +38,7 @@ const deviceSchema = z
   .object({
     name: z.string().min(1),
     room: z.string().optional(),
-    address: z.string().ip({ version: 'v4' }).optional(),
+    address: z.ipv4().optional(),
     mac: macSchema,
     model: z.string().optional(),
     nameFan: z.string().optional(),
@@ -66,7 +66,7 @@ const deviceSchema = z
 
 const configSchema = z
   .object({
-    bearerToken: z.string().min(1, 'bearerToken is required'),
+    bearerToken: z.string().min(32, 'bearerToken must be at least 32 characters'),
     udpPort: z.number().int().min(1).max(65535).default(7000),
     updateInterval: z.number().int().positive().default(1000),
     retryInterval: z.number().int().positive().default(5000),
@@ -80,17 +80,32 @@ const configSchema = z
   })
   .strict()
   .superRefine((cfg, ctx) => {
-    const seen = new Map<string, number>();
+    const seenMac = new Map<string, number>();
+    const seenName = new Map<string, number>();
     cfg.devices.forEach((device, index) => {
-      const prev = seen.get(device.mac);
-      if (prev !== undefined) {
+      const prevMac = seenMac.get(device.mac);
+      if (prevMac !== undefined) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `duplicate mac "${device.mac}" (devices "${cfg.devices[prev].name}" and "${device.name}")`,
+          message: `duplicate mac "${device.mac}" (devices "${cfg.devices[prevMac].name}" and "${device.name}")`,
           path: ['devices', index, 'mac'],
         });
       } else {
-        seen.set(device.mac, index);
+        seenMac.set(device.mac, index);
+      }
+
+      // Names resolve case-insensitively (see DeviceManager.resolve), so a
+      // case-insensitive duplicate would silently shadow the earlier device.
+      const nameKey = device.name.toLowerCase();
+      const prevName = seenName.get(nameKey);
+      if (prevName !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `duplicate device name "${device.name}" (also used by device "${cfg.devices[prevName].name}")`,
+          path: ['devices', index, 'name'],
+        });
+      } else {
+        seenName.set(nameKey, index);
       }
     });
   });
