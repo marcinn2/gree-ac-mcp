@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseConfig, ConfigError } from '../src/config.ts';
+import { parseConfig, emptyConfig, ConfigError } from '../src/config.ts';
 
 function baseDevice(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -122,4 +122,13 @@ test('rejects an empty devices array', () => {
 
 test('rejects unknown top-level keys (strict schema)', () => {
   assert.throws(() => parseConfig(baseConfig({ bogus: true })), ConfigError);
+});
+
+test('emptyConfig has no devices and safe defaults', () => {
+  const cfg = emptyConfig();
+  assert.deepEqual(cfg.devices, []);
+  assert.equal(cfg.udpPort, 7000);
+  assert.equal(cfg.port, 8080);
+  assert.equal(cfg.host, '0.0.0.0');
+  assert.deepEqual(cfg.corsOrigins, []);
 });

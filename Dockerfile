@@ -47,7 +47,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Version stamped into the OCI labels; override with --build-arg VERSION=x.y.z.
-ARG VERSION=1.0.0
+ARG VERSION=0.1.0
 
 # OCI labels. "image.source" is the one GHCR uses to link this package to the
 # repository, which is what makes the package inherit the repo README and lets

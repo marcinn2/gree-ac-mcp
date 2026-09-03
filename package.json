@@ -1,6 +1,6 @@
 {
   "name": "gree-ac-mcp-server",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Model Context Protocol server for controlling GREE/EWPE-compatible WiFi air conditioners over their native UDP protocol",
   "type": "module",
   "license": "MIT",

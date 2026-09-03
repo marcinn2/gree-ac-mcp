@@ -158,6 +158,26 @@ export function parseConfig(raw: unknown): ResolvedConfig {
   };
 }
 
+/**
+ * A configuration with no devices, used when the server is launched in stdio mode
+ * without a config file (e.g. an MCP directory introspecting the image). The server
+ * starts, advertises its tools, and `list_devices` returns an empty list until a
+ * real config is supplied. `bearerToken` is irrelevant here because HTTP mode still
+ * requires an explicit config file.
+ */
+export function emptyConfig(): ResolvedConfig {
+  return {
+    bearerToken: '',
+    udpPort: 7000,
+    updateInterval: 1000,
+    retryInterval: 5000,
+    host: '0.0.0.0',
+    port: 8080,
+    corsOrigins: [],
+    devices: [],
+  };
+}
+
 /** Load + validate a config file from disk. */
 export function loadConfig(path: string): ResolvedConfig {
   let contents: string;

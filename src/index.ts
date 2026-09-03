@@ -10,7 +10,7 @@
  * Config path may also come from the GREE_MCP_CONFIG environment variable.
  */
 import { parseArgs } from 'node:util';
-import { loadConfig, ConfigError } from './config.js';
+import { loadConfig, emptyConfig, ConfigError } from './config.js';
 import { createLogger, type LogLevel } from './logger.js';
 import { DeviceManager } from './gree/manager.js';
 import { runStdio } from './transport/stdio.js';
@@ -73,11 +73,17 @@ async function main(): Promise<void> {
   const cli = parseCliOptions();
   const log = createLogger(cli.logLevel);
 
-  if (!cli.configPath) {
-    throw new Error('No config file specified. Use --config <path> or set GREE_MCP_CONFIG.');
+  let config: ReturnType<typeof loadConfig>;
+  if (cli.configPath) {
+    config = loadConfig(cli.configPath);
+  } else if (cli.transport === 'stdio') {
+    // Allow launching with no config (e.g. an MCP directory introspecting the image):
+    // start with no devices so `initialize`/`tools/list` still succeed.
+    log.warn('no config file specified; starting with no devices (introspection mode). Pass --config to control units.');
+    config = emptyConfig();
+  } else {
+    throw new Error('HTTP mode requires a config file (for bearerToken and devices). Use --config <path> or set GREE_MCP_CONFIG.');
   }
-
-  const config = loadConfig(cli.configPath);
   // CLI flags override config defaults for HTTP bind host/port.
   if (cli.host !== undefined) {
     config.host = cli.host;

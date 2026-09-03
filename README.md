@@ -48,7 +48,7 @@ During development you can run the TypeScript directly with `npm run dev:stdio` 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--transport <stdio\|http>` | `stdio` | Transport mode. |
-| `--config <path>` | `$GREE_MCP_CONFIG` | Path to the config file (required). |
+| `--config <path>` | `$GREE_MCP_CONFIG` | Path to the config file. Required for HTTP mode; optional for stdio (starts with no devices if omitted). |
 | `--host <host>` | `0.0.0.0` | HTTP bind host (http mode). Overrides config. Must be non-empty. |
 | `--port <port>` | `8080` | HTTP bind port (http mode). Overrides config. Must be an integer 1–65535. |
 | `--log-level <debug\|info\|warn\|error>` | `info` | Log verbosity (JSON lines on **stderr**). |
