@@ -16,7 +16,11 @@ export function createMcpServer(manager: DeviceManager, log: Logger): McpServer 
   const server = new McpServer(
     { name: SERVER_NAME, version: SERVER_VERSION },
     {
-      capabilities: { tools: {}, resources: {} },
+      // Capabilities are inferred from what we register below. We deliberately do
+      // NOT hard-declare a `resources` capability: in introspection mode (no config,
+      // no devices) nothing is registered, and advertising `resources` with no
+      // resources/list handler makes a client's resources/list call fail with -32601,
+      // which breaks MCP directory probes (e.g. Glama).
       instructions:
         'Controls GREE/EWPE WiFi air conditioners over their native UDP protocol. ' +
         'Select a device by its "mac" (preferred) or "name". Use list_devices to discover devices, ' +
